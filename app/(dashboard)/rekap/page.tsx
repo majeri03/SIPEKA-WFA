@@ -14,7 +14,7 @@ import {
     Award,
     ClipboardCheck
 } from 'lucide-react';
-
+import * as XLSX from 'xlsx';
 export default function RekapPage() {
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<{
@@ -89,7 +89,85 @@ export default function RekapPage() {
     };
 
     const handleExport = () => {
-        alert('Fitur export akan segera tersedia!\nData akan di-export ke format Excel.');
+        if (!pegawaiData.length) {
+            alert('Belum ada data pegawai untuk diekspor.');
+            return;
+        }
+
+        try {
+            // 1. Buat Workbook Baru
+            const workbook = XLSX.utils.book_new();
+            const timestamp = new Date().toISOString().split('T')[0];
+
+            // --- SHEET 1: RINGKASAN GLOBAL ---
+            // Siapkan data ringkasan dari state 'stats'
+            const summaryData = [
+                ["LAPORAN REKAPITULASI KINERJA PEGAWAI (SIPEKA)"],
+                ["Tanggal Download", timestamp],
+                [""],
+                ["RINGKASAN GLOBAL"],
+                ["Total Pegawai", stats?.totalPegawai || 0],
+                ["Total Laporan", stats?.totalLaporan || 0],
+                ["Laporan Bulan Ini", stats?.laporanBulanIni || 0],
+                ["Rata-rata Kehadiran", `${stats?.rataKehadiran || 0}%`],
+                [""],
+                ["Note:", "Data ini di-generate otomatis oleh sistem SIPEKA"]
+            ];
+            
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(workbook, wsSummary, "Ringkasan Global");
+
+            // --- SHEET 2: DETAIL PEGAWAI ---
+            // Mapping data pegawai agar rapi di Excel
+            const pegawaiFormatted = pegawaiData.map((p, index) => ({
+                "No": index + 1,
+                "Nama Pegawai": p.name,
+                "Unit Kerja": p.unit,
+                "Total Laporan": p.total,
+                "Sudah Dinilai": p.dinilai,
+                "Belum Dinilai": p.total - p.dinilai,
+                "Rata-rata Rating": p.rata ? Number(p.rata).toFixed(2) : "0.00",
+                "Predikat": p.rata >= 4.5 ? 'Sangat Baik' :
+                           p.rata >= 4.0 ? 'Baik' :
+                           p.rata >= 3.0 ? 'Cukup' : 'Kurang'
+            }));
+
+            const wsPegawai = XLSX.utils.json_to_sheet(pegawaiFormatted);
+
+            // Atur lebar kolom agar rapi
+            const wscols = [
+                { wch: 5 },  // No
+                { wch: 30 }, // Nama
+                { wch: 25 }, // Unit
+                { wch: 15 }, // Total
+                { wch: 15 }, // Dinilai
+                { wch: 15 }, // Belum Dinilai
+                { wch: 15 }, // Rata-rata
+                { wch: 15 }  // Predikat
+            ];
+            wsPegawai['!cols'] = wscols;
+
+            XLSX.utils.book_append_sheet(workbook, wsPegawai, "Data Pegawai");
+
+            // --- SHEET 3: STATISTIK BULANAN ---
+            if (monthlyData.length > 0) {
+                const bulanFormatted = monthlyData.map(m => ({
+                    "Bulan": m.bulan,
+                    "Jumlah Laporan": m.laporan,
+                    "Jumlah Dinilai": m.dinilai,
+                    "Rata-rata Rating": m.rata
+                }));
+                const wsBulanan = XLSX.utils.json_to_sheet(bulanFormatted);
+                XLSX.utils.book_append_sheet(workbook, wsBulanan, "Statistik Bulanan");
+            }
+
+            // 4. Download File
+            XLSX.writeFile(workbook, `Rekap_Kinerja_SIPEKA_${timestamp}.xlsx`);
+
+        } catch (error) {
+            console.error('Gagal export excel:', error);
+            alert('Terjadi kesalahan saat mengunduh file Excel.');
+        }
     };
 
     

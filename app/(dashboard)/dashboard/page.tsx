@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, DashboardStats } from '@/types';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import DashboardCard from '@/components/DashboardCard';
 import {
@@ -11,82 +11,97 @@ import {
   Star,
   TrendingUp,
   Calendar,
-  Award
+  Award,
+  AlertCircle
 } from 'lucide-react';
+import { User } from '@/types';
+// Interface untuk data dari API
+interface DashboardData {
+  totalLaporan: number;
+  totalDinilai: number;
+  belumDinilai: number;
+  rataRating: number;
+  recentActivities: Array<{
+    title: string;
+    desc: string;
+    time: string;
+    status: string;
+  }>;
+}
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<DashboardStats | null>(() => {
-    // ✅ Load dari sessionStorage dulu (cache)
-    if (typeof window !== 'undefined') {
-      const cached = sessionStorage.getItem('dashboardStats');
-      if (cached) {
-        return JSON.parse(cached);
-      }
-    }
-    return null;
+  
+  // State Data Dashboard
+  const [stats, setStats] = useState<DashboardData>({
+    totalLaporan: 0,
+    totalDinilai: 0,
+    belumDinilai: 0,
+    rataRating: 0,
+    recentActivities: []
   });
+  
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      loadData(parsedUser); // ✅ BENAR
+    const userDataStr = localStorage.getItem('user');
+    
+    if (userDataStr) {
+      try {
+        const parsedUser = JSON.parse(userDataStr);
+        if (parsedUser && parsedUser.email) {
+            setUser(parsedUser);
+            loadData(parsedUser.email);
+        } else {
+            router.replace('/login');
+        }
+      } catch {
+        router.replace('/login');
+      }
+    } else {
+        router.replace('/login');
     }
-  }, []);
+  }, [router]);
 
-  const loadData = async (userData: User) => {
+  const loadData = async (email: string) => {
     try {
-      console.log('📊 Loading dashboard for:', userData.email);
-
-      const summaryData = await api.getProfileSummary(userData.email);
-      console.log('✅ Summary data:', summaryData);
-
-      const newStats = {
-        totalLaporan: summaryData.totalLaporan,
-        sudahDinilai: summaryData.totalDinilai,
-        belumDinilai: summaryData.belumDinilai,
-        rataRating: summaryData.rataRating,
-      };
-
-      setStats(newStats);
-
-      // ✅ Simpan ke sessionStorage (cache 1 sesi)
-      sessionStorage.setItem('dashboardStats', JSON.stringify(newStats));
-
+      // Panggil API getProfileSummary yang baru
+      const data = await api.getProfileSummary(email);
+      setStats(data as unknown as DashboardData);
     } catch (error) {
       console.error('Error loading dashboard:', error);
-
-      // Set default jika error
-      setStats({
-        totalLaporan: 0,
-        sudahDinilai: 0,
-        belumDinilai: 0,
-        rataRating: 0,
-      });
     } finally {
       setLoading(false);
     }
   };
 
+  // Helper untuk format tanggal Indonesia
+  const getTodayDate = () => {
+    return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const getEndOfMonth = () => {
+    const date = new Date();
+    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    return lastDay.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-slate-200 rounded-2xl" />
-          ))}
+        <div className="h-48 bg-slate-200 rounded-3xl" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-slate-200 rounded-2xl" />)}
         </div>
       </div>
     );
   }
 
-  if (!user || !stats) return null;
+  if (!user) return null;
 
   return (
-    <div className="space-y-8 animate-fade-up">
+    <div className="space-y-8 animate-fade-up pb-10">
 
       {/* Welcome Card */}
       <div className="bg-linear-to-br from-teal-500 to-emerald-500 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
@@ -96,10 +111,10 @@ export default function DashboardPage() {
         <div className="relative">
           <div className="flex items-center gap-3 mb-4">
             <Award size={32} className="text-white" />
-            <h2 className="text-2xl font-bold">Selamat Datang Kembali! 👋</h2>
+            <h2 className="text-2xl font-bold">Selamat Datang, {user.name.split(' ')[0]}! 👋</h2>
           </div>
-          <p className="text-teal-100 text-lg mb-2">{user.name}</p>
-          <p className="text-teal-100 text-sm">{user.position} • {user.unit}</p>
+          <p className="text-teal-100 text-lg mb-2">{user.position}</p>
+          <p className="text-teal-100 text-sm opacity-80">{user.unit}</p>
         </div>
       </div>
 
@@ -110,86 +125,111 @@ export default function DashboardPage() {
           value={stats.totalLaporan}
           icon={FileText}
           color="teal"
-          trend={{ value: '+12% bulan ini', isPositive: true }}
         />
-
         <DashboardCard
           title="Sudah Dinilai"
-          value={stats.sudahDinilai}
+          value={stats.totalDinilai}
           icon={CheckCircle}
           color="emerald"
-          trend={{ value: `${Math.round((stats.sudahDinilai / stats.totalLaporan) * 100)}% selesai`, isPositive: true }}
         />
-
         <DashboardCard
-          title="Menunggu Penilaian"
+          title="Menunggu"
           value={stats.belumDinilai}
           icon={Clock}
           color="amber"
         />
-
         <DashboardCard
-          title="Rata-rata Rating"
-          value={stats.rataRating.toFixed(1)}
+          title="Rating Rata-rata"
+          value={Number(stats.rataRating).toFixed(1)}
           icon={Star}
           color="purple"
-          trend={{ value: '+0.3 dari bulan lalu', isPositive: true }}
         />
       </div>
 
-      {/* Quick Actions */}
+      {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Aktivitas Terkini */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        {/* Aktivitas Terkini (REAL DATA) */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
           <div className="flex items-center gap-3 mb-6">
             <TrendingUp size={24} className="text-teal-600" />
             <h3 className="text-lg font-bold text-slate-800">Aktivitas Terkini</h3>
           </div>
 
-          <div className="space-y-4">
-            {[
-              { title: 'Laporan disetujui', desc: 'Laporan Implementasi SIPEKA', time: '2 jam lalu', color: 'emerald' },
-              { title: 'Menunggu review', desc: 'Laporan Maintenance Server', time: '1 hari lalu', color: 'amber' },
-              { title: 'Laporan dikirim', desc: 'Laporan Pengembangan Fitur', time: '3 hari lalu', color: 'blue' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                <div className={`w-2 h-2 rounded-full bg-${item.color}-500 mt-2 shrink-0`} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-800 text-sm">{item.title}</p>
-                  <p className="text-slate-500 text-xs truncate">{item.desc}</p>
-                  <p className="text-slate-400 text-xs mt-1">{item.time}</p>
+          <div className="space-y-4 flex-1">
+            {stats.recentActivities.length > 0 ? (
+              stats.recentActivities.map((item, i) => (
+                <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                  {/* Indikator Warna Status */}
+                  <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
+                    item.status === 'reviewed' ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`} />
+                  
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-800 text-sm">{item.title}</p>
+                    <p className="text-slate-500 text-xs truncate">{item.desc}</p>
+                    <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
+                        <Clock size={10} /> {item.time}
+                    </p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm py-8">
+                <FileText size={32} className="mb-2 opacity-50" />
+                <p>Belum ada aktivitas laporan.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
-        {/* Jadwal Deadline */}
+        {/* Info & Deadline (SEMI-DYNAMIC) */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <Calendar size={24} className="text-teal-600" />
-            <h3 className="text-lg font-bold text-slate-800">Deadline Terdekat</h3>
+            <h3 className="text-lg font-bold text-slate-800">Agenda & Deadline</h3>
           </div>
 
           <div className="space-y-4">
-            {[
-              { task: 'Laporan Bulanan Februari', date: '28 Feb 2025', priority: 'high' },
-              { task: 'Evaluasi Kinerja Q1', date: '31 Mar 2025', priority: 'medium' },
-              { task: 'Rencana Kerja Tahunan', date: '15 Apr 2025', priority: 'low' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${item.priority === 'high' ? 'bg-rose-500' :
-                    item.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                    }`} />
-                  <div>
-                    <p className="font-medium text-slate-800 text-sm">{item.task}</p>
-                    <p className="text-slate-500 text-xs">{item.date}</p>
-                  </div>
+            {/* Deadline Harian (Otomatis Tanggal Hari Ini) */}
+            <div className="flex items-center justify-between p-4 bg-orange-50 border border-orange-100 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-orange-500" />
+                <div>
+                  <p className="font-medium text-slate-800 text-sm">Laporan Kinerja Harian</p>
+                  <p className="text-slate-500 text-xs">Wajib lapor sebelum 23:59</p>
                 </div>
               </div>
-            ))}
+              <span className="text-xs font-bold text-orange-600 bg-white px-2 py-1 rounded-md border border-orange-200">
+                {getTodayDate()}
+              </span>
+            </div>
+
+            {/* Deadline Bulanan (Otomatis Akhir Bulan) */}
+            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                <div>
+                  <p className="font-medium text-slate-800 text-sm">Rekap Laporan Bulanan</p>
+                  <p className="text-slate-500 text-xs">Periode bulan ini</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-blue-600 bg-white px-2 py-1 rounded-md border border-blue-200">
+                {getEndOfMonth()}
+              </span>
+            </div>
+
+            {/* Info Umum */}
+            <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <AlertCircle size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                    <p className="text-sm text-slate-600 font-medium">Informasi</p>
+                    <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                        Pastikan mengisi laporan dengan bukti dukung yang valid. Penilaian dilakukan oleh atasan langsung secara berkala.
+                    </p>
+                </div>
+            </div>
+
           </div>
         </div>
 

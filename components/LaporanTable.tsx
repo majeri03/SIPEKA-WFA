@@ -22,7 +22,7 @@ export default function LaporanTable({ data, onViewDetail }: LaporanTableProps) 
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      
+
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
@@ -81,10 +81,13 @@ export default function LaporanTable({ data, onViewDetail }: LaporanTableProps) 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {laporan.rating ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 mt-2 bg-amber-50 w-fit px-2 py-1 rounded-lg border border-amber-100">
                       <Star size={16} className="text-amber-500 fill-amber-500" />
                       <span className="text-sm font-semibold text-slate-800">
-                        {laporan.rating.toFixed(1)}
+                        {/* ✅ PERBAIKAN DISINI */}
+                        {laporan.rating && !isNaN(Number(laporan.rating))
+                          ? Number(laporan.rating).toFixed(1)
+                          : '0.0'}
                       </span>
                     </div>
                   ) : (

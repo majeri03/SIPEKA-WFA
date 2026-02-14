@@ -56,11 +56,11 @@ export default function Sidebar() {
   }, []);
 
   const menuItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['sdm', 'supervisor', 'Pegawai'] },
-    { href: '/laporan', label: 'Laporan', icon: FileText, roles: ['sdm', 'supervisor', 'Pegawai'] },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['sdm', 'supervisor', 'pegawai'] },
+    { href: '/laporan', label: 'Laporan', icon: FileText, roles: ['sdm', 'supervisor', 'pegawai'] },
     { href: '/penilaian', label: 'Penilaian', icon: ClipboardCheck, roles: ['sdm', 'supervisor'] }, // ✅ Hanya SDM & Supervisor
     { href: '/rekap', label: 'Rekap', icon: BarChart3, roles: ['sdm'] }, // ✅ Hanya SDM
-    { href: '/profile', label: 'Profil', icon: User, roles: ['sdm', 'supervisor', 'Pegawai'] },
+    { href: '/profile', label: 'Profil', icon: User, roles: ['sdm', 'supervisor', 'pegawai'] },
   ];
 
   const handleLogout = async () => {

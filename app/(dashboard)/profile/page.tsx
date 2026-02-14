@@ -1,664 +1,238 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User } from '@/types';
 import { api } from '@/lib/api';
-import Image from 'next/image';
-import {
-  User as UserIcon,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Briefcase,
-  Building2,
-  Shield,
-  Edit2,
-  Save,
-  X,
-  Lock,
-  Eye,
-  EyeOff,
-  Loader2,
-  Camera,
-  CheckCircle,
-  BarChart3,
-  Star,
+import { User } from '@/types';
+import { auth } from '@/lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth'; // ✅ Import Firebase Auth
+import { 
+  User as UserIcon, 
+  Mail, 
+  Briefcase, 
+  Building2, 
+  Save, 
+  Loader2, 
+  KeyRound,
+  ShieldCheck,
+  BadgeCheck
 } from 'lucide-react';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [summary, setSummary] = useState<{
-    totalLaporan: number;
-    totalDinilai: number;
-    belumDinilai: number;
-    rataRating: number;
-    lastReport: {
-      judul: string;
-      tanggal: string;
-      status: string;
-    } | null;
-  } | null>(null);
-
-  // Edit Profile Form
+  
+  // State form
   const [formData, setFormData] = useState({
     name: '',
-    phone: '',
-    address: '',
-    birth_date: '',
-    gender: 'L' as 'L' | 'P',
+    email: '',
+    nip: '',
+    position: '',
+    unit: ''
   });
-
-  // Change Password Modal
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    oldPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [showOldPassword, setShowOldPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setFormData({
-        name: parsedUser.name || '',
-        phone: parsedUser.phone || '',
-        address: parsedUser.address || '',
-        birth_date: parsedUser.birth_date || '',
-        gender: parsedUser.gender || 'L',
-      });
-
-      // ✅ Load summary data
-      loadSummary(parsedUser.email);
-    }
+    loadUserProfile();
   }, []);
 
-  const loadSummary = async (email: string) => {
-    try {
-      const data = await api.getProfileSummary(email);
-      setSummary(data);
-    } catch (error) {
-      console.error('Error loading summary:', error);
-    } finally {
-      setLoading(false);
+  const loadUserProfile = () => {
+    const userDataStr = localStorage.getItem('user');
+    if (userDataStr) {
+      const userData = JSON.parse(userDataStr);
+      setUser(userData);
+      setFormData({
+        name: userData.name || '',
+        email: userData.email || '',
+        nip: userData.nip || '',
+        position: userData.position || '',
+        unit: userData.unit || ''
+      });
     }
+    setLoading(false);
   };
 
   const handleSaveProfile = async () => {
-    if (!user) return;
-
     setSaving(true);
     try {
+      // Panggil API updateProfile (Hanya Nama, Jabatan, Unit)
       const updatedUser = await api.updateProfile({
-        ...user,
-        ...formData,
+        email: formData.email, // Key untuk cari user
+        name: formData.name,
+        // position: formData.position, // Uncomment jika boleh ganti jabatan
+        // unit: formData.unit          // Uncomment jika boleh ganti unit
       });
 
-      setUser(updatedUser);
+      // Update local storage & state
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      setEditMode(false);
+      setUser(updatedUser);
+      
       alert('Profil berhasil diperbarui!');
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Gagal memperbarui profil');
+      alert('Gagal memperbarui profil. Pastikan data valid.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResetPassword = async () => {
+    if (!user?.email) return;
+    
+    const confirm = window.confirm(`Kirim link reset password ke ${user.email}?`);
+    if (!confirm) return;
 
-    if (!user) return; // ✅ Early return jika user null
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('Password baru dan konfirmasi tidak cocok!');
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      alert('Password baru minimal 6 karakter!');
-      return;
-    }
-
-    setChangingPassword(true);
     try {
-      await api.changePassword({
-        email: user.email, // ✅ TAMBAHKAN ini
-        oldPassword: passwordData.oldPassword,
-        newPassword: passwordData.newPassword,
-      });
-
-      setShowPasswordModal(false);
-      setPasswordData({
-        oldPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      alert('Password berhasil diubah!');
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Gagal mengubah password';
-      console.error('Error changing password:', error);
-      alert(errorMessage);
-    } finally {
-      setChangingPassword(false);
+      await sendPasswordResetEmail(auth, user.email);
+      alert(`Link reset password telah dikirim ke ${user.email}.\nSilakan cek inbox/spam email Anda.`);
+    } catch (error: unknown) { // ✅ Ganti 'any' ke 'unknown'
+      console.error("Reset password error:", error);
+      
+      // ✅ Type Assertion yang aman untuk membaca properti .code
+      const firebaseError = error as { code?: string };
+      
+      if (firebaseError.code === 'auth/user-not-found') {
+         alert('Email tidak terdaftar di sistem autentikasi.');
+      } else {
+         alert('Gagal mengirim email reset. Coba lagi nanti.');
+      }
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 size={48} className="animate-spin text-teal-500" />
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="animate-spin text-teal-600" size={40} />
       </div>
     );
   }
 
-  if (!user) return null;
-
   return (
-    <div className="space-y-6 animate-fade-up">
-
-      {/* Header Card */}
-      <div className="bg-linear-to-r from-teal-500 to-emerald-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
-
-        <div className="relative flex flex-col md:flex-row items-center gap-6">
-          {/* Avatar */}
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center text-4xl font-bold">
-              {user.photo_url ? (
-                <Image
-                  src={user.photo_url}
-                  alt={user.name}
-                  width={96}
-                  height={96}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                user.name.charAt(0).toUpperCase()
-              )}
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-up pb-10">
+      
+      {/* Header Profile */}
+      <div className="relative bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="h-32 bg-linear-to-r from-teal-500 to-emerald-500"></div>
+        <div className="px-8 pb-8">
+          <div className="relative flex justify-between items-end -mt-12 mb-6">
+            <div className="flex items-end gap-6">
+              <div className="w-24 h-24 rounded-2xl bg-white p-1 shadow-lg">
+                <div className="w-full h-full rounded-xl bg-slate-100 flex items-center justify-center text-3xl font-bold text-teal-600 uppercase">
+                  {user?.name?.charAt(0)}
+                </div>
+              </div>
+              <div className="mb-1">
+                <h1 className="text-2xl font-bold text-slate-800">{user?.name}</h1>
+                <p className="text-slate-500 flex items-center gap-1">
+                   <BadgeCheck size={16} className="text-teal-500" />
+                   {user?.nip}
+                </p>
+              </div>
             </div>
-            <button className="absolute bottom-0 right-0 w-8 h-8 bg-white text-teal-600 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-              <Camera size={16} />
+          </div>
+
+          {/* Form Data Diri */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-700">Nama Lengkap</label>
+              <div className="relative">
+                <UserIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-700">Email (Tidak dapat diubah)</label>
+              <div className="relative">
+                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email"
+                  value={formData.email}
+                  disabled
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-700">Jabatan</label>
+              <div className="relative">
+                <Briefcase size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={formData.position}
+                  disabled // Biasanya jabatan diatur admin
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-700">Unit Kerja</label>
+              <div className="relative">
+                <Building2 size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={formData.unit}
+                  disabled // Biasanya unit diatur admin
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-end">
+            <button
+              onClick={handleSaveProfile}
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              Simpan Perubahan
             </button>
           </div>
-
-          {/* Info */}
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-bold mb-2">{user.name}</h1>
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-teal-50">
-              <div className="flex items-center gap-2">
-                <Briefcase size={16} />
-                <span className="text-sm">{user.position}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Building2 size={16} />
-                <span className="text-sm">{user.unit}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield size={16} />
-                <span className="text-sm font-medium px-3 py-1 bg-white/20 rounded-full">
-                  {user.role === 'pegawai' ? 'Pegawai' :
-                    user.role === 'supervisor' ? 'Supervisor' :
-                      user.role === 'sdm' ? 'SDM' : 'Admin'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            {!editMode ? (
-              <>
-                <button
-                  onClick={() => setEditMode(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white text-teal-600 rounded-xl font-medium hover:bg-white/90 transition-colors"
-                >
-                  <Edit2 size={18} />
-                  Edit Profil
-                </button>
-                <button
-                  onClick={() => setShowPasswordModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium hover:bg-white/30 transition-colors"
-                >
-                  <Lock size={18} />
-                  Ubah Password
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white text-teal-600 rounded-xl font-medium hover:bg-white/90 transition-colors disabled:opacity-50"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Menyimpan...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} />
-                      Simpan
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditMode(false);
-                    setFormData({
-                      name: user.name || '',
-                      phone: user.phone || '',
-                      address: user.address || '',
-                      birth_date: user.birth_date || '',
-                      gender: user.gender || 'L',
-                    });
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl font-medium hover:bg-white/30 transition-colors"
-                >
-                  <X size={18} />
-                  Batal
-                </button>
-              </>
-            )}
-          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Left Column - Informasi Pribadi */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* Informasi Pribadi */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Informasi Pribadi</h3>
-
-            <div className="space-y-4">
-              {/* Nama Lengkap */}
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center shrink-0">
-                  <UserIcon size={20} className="text-teal-600" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Nama Lengkap
-                  </label>
-                  {editMode ? (
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                    />
-                  ) : (
-                    <p className="text-slate-800 font-medium">{user.name}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* NIP */}
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                  <Shield size={20} className="text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    NIP
-                  </label>
-                  <p className="text-slate-800 font-medium">{user.nip}</p>
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                  <Mail size={20} className="text-purple-600" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Email
-                  </label>
-                  <p className="text-slate-800 font-medium">{user.email}</p>
-                </div>
-              </div>
-
-              {/* No. Telepon */}
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                  <Phone size={20} className="text-emerald-600" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    No. Telepon
-                  </label>
-                  {editMode ? (
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="08xxxxxxxxxx"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                    />
-                  ) : (
-                    <p className="text-slate-800 font-medium">{user.phone || '-'}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Tanggal Lahir */}
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Calendar size={20} className="text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Tanggal Lahir
-                  </label>
-                  {editMode ? (
-                    <input
-                      type="date"
-                      value={formData.birth_date}
-                      onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                    />
-                  ) : (
-                    <p className="text-slate-800 font-medium">{user.birth_date || '-'}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Jenis Kelamin */}
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center shrink-0">
-                  <UserIcon size={20} className="text-pink-600" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Jenis Kelamin
-                  </label>
-                  {editMode ? (
-                    <select
-                      value={formData.gender}
-                      onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'L' | 'P' })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                    >
-                      <option value="L">Laki-laki</option>
-                      <option value="P">Perempuan</option>
-                    </select>
-                  ) : (
-                    <p className="text-slate-800 font-medium">
-                      {user.gender === 'L' ? 'Laki-laki' : user.gender === 'P' ? 'Perempuan' : '-'}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Alamat */}
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                  <MapPin size={20} className="text-indigo-600" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Alamat
-                  </label>
-                  {editMode ? (
-                    <textarea
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Alamat lengkap..."
-                      rows={3}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 resize-none"
-                    />
-                  ) : (
-                    <p className="text-slate-800 font-medium">{user.address || '-'}</p>
-                  )}
-                </div>
-              </div>
-            </div>
+      {/* Bagian Keamanan (Password) */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+            <ShieldCheck size={24} className="text-orange-600" />
           </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Keamanan Akun</h3>
+            <p className="text-slate-500 mb-6">
+              Kelola keamanan akun Anda. Jika Anda merasa password Anda tidak aman, silakan lakukan reset password.
+            </p>
 
-        </div>
-
-        {/* Right Column - Activity Log */}
-        <div className="space-y-6">
-
-          {/* Informasi Jabatan */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Informasi Jabatan</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Jabatan
-                </label>
-                <p className="text-slate-800 font-medium">{user.position}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Unit Kerja
-                </label>
-                <p className="text-slate-800 font-medium">{user.unit}</p>
-              </div>
-
-              {user.supervisor_email && (
+            <div className="bg-slate-50 rounded-xl p-6 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <KeyRound size={20} className="text-slate-400" />
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Atasan Langsung
-                  </label>
-                  <p className="text-slate-800 font-medium">{user.supervisor_email}</p>
+                  <p className="font-semibold text-slate-700">Password Login</p>
+                  <p className="text-sm text-slate-500">Terakhir diubah: -</p>
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Status
-                </label>
-                <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
-                  <CheckCircle size={14} />
-                  Aktif
-                </span>
               </div>
-            </div>
-          </div>
-
-          {/* Profile Summary */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 size={20} className="text-teal-600" />
-              <h3 className="text-lg font-bold text-slate-800">Ringkasan Kinerja</h3>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 size={32} className="animate-spin text-teal-500" />
-              </div>
-            ) : summary ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                  <span className="text-sm text-slate-600">Total Laporan</span>
-                  <span className="text-xl font-bold text-teal-600">
-                    {summary.totalLaporan}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                  <span className="text-sm text-slate-600">Sudah Dinilai</span>
-                  <span className="text-xl font-bold text-emerald-600">
-                    {summary.totalDinilai}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                  <span className="text-sm text-slate-600">Belum Dinilai</span>
-                  <span className="text-xl font-bold text-amber-600">
-                    {summary.belumDinilai}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-linear-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-200">
-                  <span className="text-sm font-medium text-teal-700">Rata-rata Rating</span>
-                  <div className="flex items-center gap-1">
-                    <Star size={18} className="text-amber-500 fill-amber-500" />
-                    <span className="text-xl font-bold text-teal-700">
-                      {summary.rataRating.toFixed(1)}
-                    </span>
-                  </div>
-                </div>
-
-                {summary.lastReport && (
-                  <div className="mt-4 pt-4 border-t border-slate-200">
-                    <p className="text-xs font-medium text-slate-600 mb-2">Laporan Terakhir:</p>
-                    <p className="text-sm font-medium text-slate-800 line-clamp-1">
-                      {summary.lastReport.judul}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {new Date(summary.lastReport.tanggal).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 text-center py-4">
-                Belum ada data laporan
-              </p>
-            )}
-          </div>
-
-        </div>
-      </div>
-
-      {/* MODAL: Change Password */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-up">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-
-            {/* Header */}
-            <div className="bg-linear-to-r from-teal-500 to-emerald-500 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <h3 className="text-xl font-bold text-white">Ubah Password</h3>
-              <button
-                onClick={() => setShowPasswordModal(false)}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              
+              <button 
+                onClick={handleResetPassword}
+                className="whitespace-nowrap px-4 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm transition-colors"
               >
-                <X size={20} className="text-white" />
+                Kirim Email Reset Password
               </button>
             </div>
-
-            {/* Form */}
-            <form onSubmit={handleChangePassword} className="p-6 space-y-5">
-
-              {/* Password Lama */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Password Lama <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type={showOldPassword ? 'text' : 'password'}
-                    value={passwordData.oldPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                    required
-                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowOldPassword(!showOldPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Password Baru */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Password Baru <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                    required
-                    minLength={6}
-                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">Minimal 6 karakter</p>
-              </div>
-
-              {/* Konfirmasi Password */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Konfirmasi Password Baru <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    required
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                  />
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordModal(false)}
-                  className="flex-1 px-6 py-3 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={changingPassword}
-                  className="flex-1 px-6 py-3 bg-linear-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {changingPassword ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 size={18} className="animate-spin" />
-                      Menyimpan...
-                    </span>
-                  ) : 'Simpan Password'}
-                </button>
-              </div>
-
-            </form>
+            
+            <p className="text-xs text-slate-400 mt-3 italic">
+              *Link untuk mengubah password baru akan dikirimkan ke email <strong>{user?.email}</strong>
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
     </div>
   );

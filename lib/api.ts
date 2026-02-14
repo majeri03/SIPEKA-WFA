@@ -33,18 +33,21 @@ class API {
 
   private async fetchAPI(
     endpoint: string,
-    params?: Record<string, string | number | boolean>,
+    params: Record<string, string | number | boolean> = {}, // Default empty object
   ): Promise<unknown> {
     if (!API_BASE_URL) {
       throw new Error("Apps Script URL belum dikonfigurasi");
     }
 
-    const url = this.getFullURL(endpoint, params);
+    // Pastikan params bukan null/undefined sebelum diproses
+    const safeParams = params || {};
+    const url = this.getFullURL(endpoint, safeParams);
 
     try {
       const response = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store", // Tambahkan ini agar tidak cache error
       });
 
       if (!response.ok) {
@@ -54,13 +57,17 @@ class API {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.data || "Terjadi kesalahan");
+        // Cek apakah error message berupa string atau object
+        const errorMessage = typeof result.data === 'string' 
+            ? result.data 
+            : JSON.stringify(result.data);
+        throw new Error(errorMessage || "Terjadi kesalahan pada server");
       }
 
       return result.data;
     } catch (error) {
-      console.error("API Error:", error);
-      throw error instanceof Error ? error : new Error("Gagal terhubung");
+      console.error(`API Error [${endpoint}]:`, error);
+      throw error instanceof Error ? error : new Error("Gagal terhubung ke server");
     }
   }
 
@@ -126,14 +133,31 @@ class API {
     totalDinilai: number;
     belumDinilai: number;
     rataRating: number;
+    // Tambahkan properti ini agar sesuai dengan output Apps Script terbaru
+    recentActivities: Array<{
+      title: string;
+      desc: string;
+      time: string;
+      status: string;
+    }>;
     lastReport: { judul: string; tanggal: string; status: string } | null;
   }> {
+    if (!userEmail) throw new Error("Email diperlukan untuk mengambil data profil");
+    
     const data = await this.fetchAPI("getProfileSummary", { email: userEmail });
+    
+    // Casting ke tipe yang lengkap
     return data as {
       totalLaporan: number;
       totalDinilai: number;
       belumDinilai: number;
       rataRating: number;
+      recentActivities: Array<{
+        title: string;
+        desc: string;
+        time: string;
+        status: string;
+      }>;
       lastReport: { judul: string; tanggal: string; status: string } | null;
     };
   }
