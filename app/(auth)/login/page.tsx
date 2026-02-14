@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { api } from '@/lib/api';
-import { Mail, Lock, AlertCircle, Loader2, User, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, User, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,8 +13,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,37 +23,18 @@ export default function LoginPage() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const userData = await api.getUser(userCredential.user.email || '');
 
-      const userData = await api.getUser(user.email || '');
-
-      if (!userData) {
-        setError('Email tidak terdaftar dalam sistem. Hubungi SDM.');
-        await auth.signOut();
-        setLoading(false);
-        return;
-      }
-
-      if (!userData.is_active) {
-        setError('Akun Anda tidak aktif. Hubungi SDM.');
-        await auth.signOut();
+      if (!userData || !userData.is_active) {
+        setError('Akun tidak valid atau tidak aktif.');
         setLoading(false);
         return;
       }
 
       localStorage.setItem('user', JSON.stringify(userData));
       router.push('/dashboard');
-    } catch (err: unknown) {
-      console.error('Login error:', err);
-      if (err instanceof Error) {
-        if (err.message.includes('invalid-credential') || err.message.includes('wrong-password')) {
-          setError('Email atau password salah');
-        } else if (err.message.includes('user-not-found')) {
-          setError('Email tidak terdaftar');
-        } else {
-          setError('Terjadi kesalahan. Coba lagi.');
-        }
-      }
+    } catch {
+      setError('Email atau password salah.');
       setLoading(false);
     }
   };
@@ -61,173 +42,144 @@ export default function LoginPage() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      setError('Masukkan email Anda terlebih dahulu');
+      setError('Masukkan email terlebih dahulu.');
       return;
     }
 
     setLoading(true);
-    setError('');
-
     try {
       await sendPasswordResetEmail(auth, email);
       setResetEmailSent(true);
-      setLoading(false);
-    } catch (err: unknown) {
-      console.error('Reset password error:', err);
-      setError('Gagal mengirim email reset password. Periksa email Anda.');
-      setLoading(false);
+    } catch {
+      setError('Gagal mengirim email reset.');
     }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-linear-to-br from-teal-300 via-teal-500 to-teal-700">
-      
-      <div className="w-full max-w-md space-y-8">
-        {/* AVATAR */}
-        <div className="flex justify-center animate-fade-in">
-          <div className="relative flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-slate-800 to-blue-900 shadow-xl ring-4 ring-white/20">
-            <User size={56} className="text-white" strokeWidth={2.5} />
+    <div className="relative flex min-h-screen items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 px-6 py-24">
+
+      {/* Glow Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(20,184,166,0.15),transparent_60%)]" />
+
+      <div className="relative w-full max-w-md my-10">
+
+        {/* Floating Avatar */}
+        <div className="absolute -top-14 md:-top-20 left-1/2 -translate-x-1/2">
+          <div className="flex h-32 w-32 items-center justify-center rounded-full bg-teal-500 shadow-[0_15px_40px_rgba(0,0,0,0.4)] ring-8 ring-slate-900">
+            <User size={60} className="text-white" />
           </div>
         </div>
 
-        {/* CARD LOGIN */}
-        <div className="relative overflow-hidden rounded-3xl p-8 md:p-10 bg-teal-600/90 backdrop-blur-md shadow-2xl animate-fade-in ring-1 ring-white/20">
-          
-          {/* Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">SIPEKA</h1>
-            <p className="text-sm text-teal-100 font-medium">Sistem Pelaporan Kinerja Pegawai</p>
+        {/* Card */}
+        <div className="mt-16 md:mt-24 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl px-8 md:px-10 py-10 md:py-12 animate-fade-up">
+
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-extrabold text-white tracking-tight">
+              SIPEKA
+            </h1>
+            <p className="mt-2 text-xs uppercase tracking-widest text-slate-400">
+              Sistem Pelaporan Kinerja Pegawai
+            </p>
           </div>
 
-          {/* Error Message */}
           {error && (
-            <div className="flex items-start gap-3 p-4 mb-6 rounded-xl bg-red-500/90 shadow-lg animate-fade-in">
-              <AlertCircle size={18} className="text-white shrink-0 mt-0.5" />
-              <p className="text-sm text-white font-medium">{error}</p>
+            <div className="mb-6 flex items-center gap-3 rounded-xl bg-red-500/20 border border-red-500/40 px-4 py-3 text-red-400 text-sm">
+              <AlertCircle size={18} />
+              {error}
             </div>
           )}
 
-          {/* Success Message */}
           {resetEmailSent && (
-            <div className="flex items-start gap-3 p-4 mb-6 rounded-xl bg-green-500/90 shadow-lg animate-fade-in">
-              <CheckCircle size={18} className="text-white shrink-0 mt-0.5" />
-              <p className="text-sm text-white font-medium">Email reset terkirim! Cek inbox Anda.</p>
+            <div className="mb-6 flex items-center gap-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 px-4 py-3 text-emerald-400 text-sm">
+              <CheckCircle size={18} />
+              Email reset terkirim!
             </div>
           )}
 
-          {/* LOGIN FORM */}
           {!showForgotPassword ? (
             <form onSubmit={handleLogin} className="space-y-6">
-              
-              {/* Input Email */}
-              <div className="relative group">
-                <Mail size={20} className="absolute left-0 top-3.5 text-teal-200 group-focus-within:text-white transition-colors" />
+
+              {/* Email */}
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
+                  placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email ID"
-                  className="w-full py-3 pl-8 pr-3 text-white bg-transparent border-b-2 border-teal-300/50 outline-none placeholder:text-teal-200/70 focus:border-white transition-all"
-                  disabled={loading}
+                  className="w-full rounded-xl bg-white/10 border border-white/10 py-4 pl-12 pr-4 text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none transition"
                   required
                 />
               </div>
 
-              {/* Input Password */}
-              <div className="relative group">
-                <Lock size={20} className="absolute left-0 top-3.5 text-teal-200 group-focus-within:text-white transition-colors" />
+              {/* Password */}
+              <div className="relative">
+                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
+                  placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="w-full py-3 pl-8 pr-3 text-white bg-transparent border-b-2 border-teal-300/50 outline-none placeholder:text-teal-200/70 focus:border-white transition-all"
-                  disabled={loading}
+                  className="w-full rounded-xl bg-white/10 border border-white/10 py-4 pl-12 pr-4 text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none transition"
                   required
                 />
               </div>
 
-              {/* Lupa Password */}
-              <div className="flex justify-end">
+              <div className="text-right">
                 <button
                   type="button"
-                  onClick={() => { 
-                    setShowForgotPassword(true); 
-                    setError(''); 
-                    setResetEmailSent(false);
-                  }}
-                  className="text-xs font-semibold text-teal-100 hover:text-white transition-colors uppercase tracking-wide"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-xs text-slate-400 hover:text-teal-400 transition"
                 >
                   Lupa Password?
                 </button>
               </div>
 
-              {/* Tombol Login */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 font-bold text-white uppercase tracking-wider rounded-xl bg-gradient-to-r from-slate-800 to-blue-900 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="w-full rounded-xl bg-teal-500 py-4 font-semibold text-white shadow-lg hover:bg-teal-600 transition disabled:opacity-50"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 size={20} className="animate-spin" />
-                    MEMPROSES...
-                  </span>
-                ) : 'MASUK'}
+                {loading ? <Loader2 className="mx-auto animate-spin" /> : 'Masuk'}
               </button>
+
             </form>
           ) : (
-            // FORGOT PASSWORD FORM
             <form onSubmit={handleForgotPassword} className="space-y-6">
-              <p className="text-sm text-teal-100 mb-4 text-center font-medium">
-                Masukkan email Anda untuk menerima link reset password
-              </p>
-              
-              <div className="relative group">
-                <Mail size={20} className="absolute left-0 top-3.5 text-teal-200 group-focus-within:text-white transition-colors" />
+
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
+                  placeholder="Masukkan Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email ID"
-                  className="w-full py-3 pl-8 pr-3 text-white bg-transparent border-b-2 border-teal-300/50 outline-none placeholder:text-teal-200/70 focus:border-white transition-all"
-                  disabled={loading}
+                  className="w-full rounded-xl bg-white/10 border border-white/10 py-4 pl-12 pr-4 text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none transition"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-4 font-bold text-white uppercase tracking-wider rounded-xl bg-gradient-to-r from-slate-800 to-blue-900 shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-70 transition-all"
+                className="w-full rounded-xl bg-teal-500 py-4 font-semibold text-white shadow-lg hover:bg-teal-600 transition"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 size={20} className="animate-spin" />
-                    MENGIRIM...
-                  </span>
-                ) : 'KIRIM RESET LINK'}
+                Kirim Link Reset
               </button>
 
               <button
                 type="button"
-                onClick={() => { 
-                  setShowForgotPassword(false); 
-                  setError(''); 
-                  setResetEmailSent(false);
-                }}
-                className="w-full py-3 text-sm font-medium text-teal-100 hover:text-white transition-colors"
+                onClick={() => setShowForgotPassword(false)}
+                className="w-full text-sm text-slate-400 hover:text-white transition"
               >
-                Kembali ke Login
+                Kembali
               </button>
+
             </form>
           )}
 
-          {/* Footer */}
-          <div className="text-center pt-6 mt-8 border-t border-teal-400/30">
-            <p className="text-xs text-teal-100">
-              Tidak punya akun? Hubungi <span className="font-bold text-white">SDM</span> untuk pendaftaran
-            </p>
+          <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-500">
+            Hubungi <span className="text-white font-semibold">SDM</span> untuk akses akun
           </div>
 
         </div>
