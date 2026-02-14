@@ -11,7 +11,8 @@ import {
   User,
   LogOut,
   ChevronLeft,
-  Menu
+  Menu,
+  Users
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -56,11 +57,55 @@ export default function Sidebar() {
   }, []);
 
   const menuItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['sdm', 'supervisor', 'pegawai'] },
-    { href: '/laporan', label: 'Laporan', icon: FileText, roles: ['sdm', 'supervisor', 'pegawai'] },
-    { href: '/penilaian', label: 'Penilaian', icon: ClipboardCheck, roles: ['sdm', 'supervisor'] }, // ✅ Hanya SDM & Supervisor
-    { href: '/rekap', label: 'Rekap', icon: BarChart3, roles: ['sdm'] }, // ✅ Hanya SDM
-    { href: '/profile', label: 'Profil', icon: User, roles: ['sdm', 'supervisor', 'pegawai'] },
+    // SEMUA bisa lihat Dashboard (tapi isinya beda nanti)
+    {
+      href: '/dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      roles: ['sdm', 'supervisor', 'pegawai']
+    },
+
+    // PEGAWAI: Input Laporan
+    // SUPERVISOR: Bisa lihat riwayat laporan bawahan (opsional, tapi biasanya di menu Penilaian)
+    // SDM: Tidak perlu input laporan kerja teknis
+    {
+      href: '/laporan',
+      label: 'Laporan Kerja',
+      icon: FileText,
+      roles: ['pegawai'] // Khusus Pegawai yang input
+    },
+
+    // SUPERVISOR: Penilaian (Approval/Rating)
+    {
+      href: '/penilaian',
+      label: 'Penilaian Tim',
+      icon: ClipboardCheck,
+      roles: ['supervisor'] // Khusus Supervisor
+    },
+
+    // SDM: Rekap Data Global
+    {
+      href: '/rekap',
+      label: 'Rekap & Monitor',
+      icon: BarChart3,
+      roles: ['sdm'] // Khusus SDM
+    },
+
+    // SDM: Manajemen User
+    {
+      href: '/pegawai',
+      label: 'Data Pegawai',
+      icon: Users,
+      roles: ['sdm'] // Khusus SDM
+    },
+
+    // SEMUA: Profil
+    {
+      href: '/profile',
+      label: 'Profil',
+      icon: User,
+      roles: ['sdm', 'supervisor', 'pegawai']
+    },
   ];
 
   const handleLogout = async () => {
@@ -157,8 +202,8 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                    ? 'bg-white text-teal-600 font-semibold'
-                    : 'hover:bg-white/10'
+                  ? 'bg-white text-teal-600 font-semibold'
+                  : 'hover:bg-white/10'
                   } ${isCollapsed ? 'justify-center' : ''}`}
               >
                 <Icon size={20} />
@@ -239,8 +284,8 @@ export default function Sidebar() {
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                        ? 'bg-white text-teal-600 font-semibold'
-                        : 'hover:bg-white/10'
+                      ? 'bg-white text-teal-600 font-semibold'
+                      : 'hover:bg-white/10'
                       }`}
                   >
                     <Icon size={20} />

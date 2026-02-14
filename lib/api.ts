@@ -284,6 +284,35 @@ class API {
     const data = await this.fetchAPI("getArsip", { email: userEmail, year });
     return data as Laporan[];
   }
+
+  // ========================================
+  // SDM / PEGAWAI MANAGEMENT METHODS
+  // ========================================
+
+  async getAllUsers(requesterEmail: string): Promise<User[]> {
+    if (!requesterEmail) throw new Error("Email admin diperlukan");
+    // Menggunakan fetchAPI yang sudah ada di class Anda
+    const data = await this.fetchAPI("getAllUsers", { email: requesterEmail });
+    return data as User[];
+  }
+
+  async manageUser(
+    adminEmail: string, 
+    action: 'add' | 'edit' | 'delete', 
+    payload: Record<string, unknown>
+  ): Promise<{ success: boolean; message: string }> {
+    
+    // Bungkus payload agar sesuai struktur yang diharapkan Backend GAS
+    const body = {
+      adminEmail,
+      action,
+      payload
+    };
+
+    // Menggunakan postAPI yang sudah ada (otomatis handle endpoint 'manageUser')
+    const data = await this.postAPI("manageUser", body);
+    return data as { success: boolean; message: string };
+  }
 }
 
 export const api = new API();
