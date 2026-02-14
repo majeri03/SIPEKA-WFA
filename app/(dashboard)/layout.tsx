@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter, usePathname } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import Sidebar from '@/components/Sidebar';
-import { User } from '@/types';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -13,26 +12,22 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const pathname = usePathname();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (!firebaseUser) {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
         router.push('/login');
-        return;
-      }
-
-      // Get user data from localStorage
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const parsedUser = JSON.parse(userData) as User;
-        setUser(parsedUser);
       } else {
-        router.push('/login');
+        // Check if user data exists in localStorage
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+          router.push('/login');
+        } else {
+          setLoading(false);
+        }
       }
-      
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -40,24 +35,57 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-t-blue-600 border-gray-200 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Memuat...</p>
+          <Loader2 size={48} className="mx-auto text-teal-500 animate-spin mb-4" />
+          <p className="text-slate-600 font-medium">Memuat...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  // Get page title
+  const getPageTitle = () => {
+    const titles: Record<string, string> = {
+      '/dashboard': 'Dashboard',
+      '/laporan': 'Laporan Saya',
+      '/penilaian': 'Penilaian Laporan',
+      '/rekap': 'Rekap Data',
+      '/profile': 'Profil Saya',
+    };
+    return titles[pathname] || 'Dashboard';
+  };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar userRole={user.role} />
-      <main className="flex-1 ml-64 p-8">
-        {children}
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      <Sidebar />
+      
+      <main className="flex-1 overflow-y-auto">
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+          <div className="px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">
+                  {getPageTitle()}
+                </h1>
+                <p className="text-sm text-slate-500 mt-1">
+                  {new Date().toLocaleDateString('id-ID', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="p-6 lg:p-8">
+          {children}
+        </div>
       </main>
     </div>
   );

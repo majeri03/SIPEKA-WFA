@@ -1,33 +1,43 @@
 export interface User {
+  phone: string;
   id: string;
+  email: string;
   name: string;
   nip: string;
-  email: string;
-  role: 'pegawai' | 'atasan' | 'sdm';
   position: string;
   unit: string;
-  supervisor_email: string;
+  role: 'pegawai' | 'supervisor' | 'sdm' | 'admin';
+  supervisor_email?: string;
   is_active: boolean;
   created_at: string;
+
+  hone?: string;
+  address?: string;
+  birth_date?: string;
+  gender?: 'L' | 'P';
+  photo_url?: string;
 }
 
 export interface Laporan {
   id: string;
-  employee_email: string;
-  employee_name: string;
-  employee_nip: string;
-  supervisor_email: string;
-  plan_title: string;
-  daily_description: string;
-  output_result: string;
-  report_date: string;
-  drive_link: string;
-  rating_label: string;
-  rating_score: number;
-  feedback_note: string;
-  rated_by: string;
-  rated_at: string;
-  status: 'submitted' | 'reviewed';
+  user_id: string;
+  user_name?: string;
+  tanggal: string;
+  judul: string;
+  deskripsi: string;
+  file_url?: string;
+  status: 'belum_dinilai' | 'sudah_dinilai';
+  rating?: number;
+  komentar?: string;
+  created_at: string;
+}
+
+export interface Review {
+  id: string;
+  laporan_id: string;
+  reviewer_email: string;
+  rating: number;
+  komentar: string;
   created_at: string;
 }
 
@@ -36,11 +46,4 @@ export interface DashboardStats {
   sudahDinilai: number;
   belumDinilai: number;
   rataRating: number;
-}
-
-export interface RatingData {
-  rating_label: string;
-  rating_score: number;
-  feedback_note: string;
-  rated_by: string;
 }
