@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
         hostname: 'drive.google.com',
       },
     ],
+    unoptimized: true,
   },
 };
 
