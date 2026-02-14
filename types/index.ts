@@ -47,3 +47,21 @@ export interface DashboardStats {
   belumDinilai: number;
   rataRating: number;
 }
+
+export interface ArsipData {
+  id: string;
+  user_name: string;
+  tanggal: string;
+  judul: string;
+  deskripsi: string;
+  status: string;
+  rating: number | null;
+  rating_score?: string; // Tambahkan ini agar tidak error
+  created_at: string;
+  employee_nip?: string;
+  supervisor_email?: string;
+  drive_link?: string;
+  feedback_note?: string;
+  rated_by?: string;
+  rated_at?: string;
+}

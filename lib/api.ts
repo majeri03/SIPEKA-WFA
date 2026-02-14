@@ -1,4 +1,4 @@
-import { User, Laporan } from "@/types";
+import { User, Laporan, ArsipData } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
 
@@ -280,9 +280,11 @@ class API {
   // ARSIP METHODS
   // ========================================
 
-  async getArsip(userEmail: string, year: number): Promise<Laporan[]> {
-    const data = await this.fetchAPI("getArsip", { email: userEmail, year });
-    return data as Laporan[];
+  async getArsip(userEmail: string, year: number): Promise<ArsipData[]> {
+    const data = await this.fetchAPI("getArsip", { email: userEmail, year: year });
+    
+    // ✅ 3. Ubah casting 'as any[]' menjadi 'as ArsipData[]'
+    return data as ArsipData[]; 
   }
 
   // ========================================

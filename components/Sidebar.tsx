@@ -12,7 +12,8 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
-  Users
+  Users,
+  FileSpreadsheet
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -99,6 +100,12 @@ export default function Sidebar() {
       roles: ['sdm'] // Khusus SDM
     },
 
+    {
+      href: '/arsip',
+      label: 'Arsip Data',
+      icon: FileSpreadsheet,
+      roles: ['sdm']
+    },
     // SEMUA: Profil
     {
       href: '/profile',
@@ -175,6 +182,7 @@ export default function Sidebar() {
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
               {user.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-xl font-bold">{user.name.charAt(0)}</span>
@@ -259,6 +267,7 @@ export default function Sidebar() {
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
                   {user.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-xl font-bold">{user.name.charAt(0)}</span>

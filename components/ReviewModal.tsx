@@ -66,7 +66,7 @@ export default function ReviewModal({ laporan, onClose, onSubmit }: ReviewModalP
 
   // Gunakan Portal untuk memindahkan modal ke document.body
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
       
       {/* Backdrop Gelap (Klik luar untuk tutup) */}
       <div 
@@ -78,7 +78,7 @@ export default function ReviewModal({ laporan, onClose, onSubmit }: ReviewModalP
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col animate-zoom-in">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-linear-to-r from-teal-500 to-emerald-500 px-6 py-4 flex items-center justify-between shrink-0">
           <h3 className="text-xl font-bold text-white">Beri Penilaian</h3>
           <button
             onClick={onClose}
@@ -98,7 +98,7 @@ export default function ReviewModal({ laporan, onClose, onSubmit }: ReviewModalP
                 <FileText size={24} className="text-teal-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-lg font-bold text-slate-800 mb-2 break-words">
+                <h4 className="text-lg font-bold text-slate-800 mb-2 wrap-break-word">
                   {laporan.judul}
                 </h4>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
@@ -121,7 +121,7 @@ export default function ReviewModal({ laporan, onClose, onSubmit }: ReviewModalP
             {/* Teks Deskripsi */}
             <div>
                 <h5 className="text-sm font-semibold text-slate-700 mb-3">Deskripsi Kegiatan</h5>
-                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap break-words">
+                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {laporan.deskripsi}
                 </p>
             </div>
@@ -244,7 +244,7 @@ export default function ReviewModal({ laporan, onClose, onSubmit }: ReviewModalP
               <button
                 type="submit"
                 disabled={submitting || rating === 0 || komentar.length < 10}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-linear-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
