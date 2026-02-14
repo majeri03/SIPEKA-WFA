@@ -1,68 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || '';
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const endpoint = searchParams.get('endpoint');
   
-  const params = new URLSearchParams();
-  searchParams.forEach((value, key) => {
-    if (key !== 'endpoint') {
-      params.append(key, value);
-    }
-  });
-
-  const appsScriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
-
-  // 🔥 Check jika Apps Script URL belum dikonfigurasi
-  if (!appsScriptUrl || appsScriptUrl === '') {
-    console.warn('⚠️ Apps Script URL tidak ada, gunakan mock data di frontend');
+  if (!endpoint) {
     return NextResponse.json(
-      { 
-        error: 'Apps Script URL belum dikonfigurasi',
-        useMockData: true
-      },
-      { status: 503 }
+      { success: false, data: 'Endpoint parameter required' },
+      { status: 400 }
     );
   }
 
-  const url = `${appsScriptUrl}?action=${endpoint}&${params.toString()}`;
-
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    // ✅ Build URL dengan SEMUA params
+    const url = new URL(APPS_SCRIPT_URL);
+    url.searchParams.append('endpoint', endpoint);
+    
+    // ✅ Forward SEMUA params KECUALI endpoint
+    searchParams.forEach((value, key) => {
+      if (key !== 'endpoint') {
+        url.searchParams.append(key, value);
+      }
     });
 
-    const contentType = response.headers.get('content-type');
-    
-    // 🔥 Check jika response bukan JSON (biasanya HTML error page)
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('❌ Response bukan JSON:', text.substring(0, 200));
-      
-      return NextResponse.json(
-        { 
-          error: 'Invalid Apps Script URL atau script belum di-deploy',
-          useMockData: true
-        },
-        { status: 500 }
-      );
-    }
+    console.log('📡 Proxy GET:', url.toString());
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
 
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    return NextResponse.json(data, { 
+      status: response.ok ? 200 : 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      }
+    });
 
-  } catch (err) {
-    console.error('❌ API Error:', err);
+  } catch (error) {
+    console.error('❌ Proxy GET error:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch from Apps Script',
-        useMockData: true,
-        message: err instanceof Error ? err.message : 'Unknown error'
-      },
+      { success: false, data: error instanceof Error ? error.message : 'Server error' },
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const endpoint = searchParams.get('endpoint');
+  
+  if (!endpoint) {
+    return NextResponse.json(
+      { success: false, data: 'Endpoint parameter required' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const body = await request.json();
+    
+    const url = new URL(APPS_SCRIPT_URL);
+    url.searchParams.append('endpoint', endpoint);
+
+    console.log('📡 Proxy POST:', url.toString(), body);
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    
+    return NextResponse.json(data, { 
+      status: response.ok ? 200 : 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Proxy POST error:', error);
+    return NextResponse.json(
+      { success: false, data: error instanceof Error ? error.message : 'Server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }

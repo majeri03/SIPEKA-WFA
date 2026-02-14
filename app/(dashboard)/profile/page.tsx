@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { User } from '@/types';
 import { api } from '@/lib/api';
-import { 
+import Image from 'next/image';
+import {
   User as UserIcon,
   Mail,
   Phone,
@@ -18,24 +19,31 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Clock,
-  FileText,
-  LogIn,
   Loader2,
   Camera,
-  CheckCircle
+  CheckCircle,
+  BarChart3,
+  Star,
 } from 'lucide-react';
-import { formatDateTime } from '@/lib/utils';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
-  
-  // Activity Log
-  const [activityLog, setActivityLog] = useState<any[]>([]);
-  
+
+  const [summary, setSummary] = useState<{
+    totalLaporan: number;
+    totalDinilai: number;
+    belumDinilai: number;
+    rataRating: number;
+    lastReport: {
+      judul: string;
+      tanggal: string;
+      status: string;
+    } | null;
+  } | null>(null);
+
   // Edit Profile Form
   const [formData, setFormData] = useState({
     name: '',
@@ -68,16 +76,18 @@ export default function ProfilePage() {
         birth_date: parsedUser.birth_date || '',
         gender: parsedUser.gender || 'L',
       });
-      loadActivityLog();
+
+      // ✅ Load summary data
+      loadSummary(parsedUser.email);
     }
   }, []);
 
-  const loadActivityLog = async () => {
+  const loadSummary = async (email: string) => {
     try {
-      const logs = await api.getActivityLog();
-      setActivityLog(logs);
+      const data = await api.getProfileSummary(email);
+      setSummary(data);
     } catch (error) {
-      console.error('Error loading activity log:', error);
+      console.error('Error loading summary:', error);
     } finally {
       setLoading(false);
     }
@@ -108,6 +118,8 @@ export default function ProfilePage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!user) return; // ✅ Early return jika user null
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert('Password baru dan konfirmasi tidak cocok!');
       return;
@@ -121,6 +133,7 @@ export default function ProfilePage() {
     setChangingPassword(true);
     try {
       await api.changePassword({
+        email: user.email, // ✅ TAMBAHKAN ini
         oldPassword: passwordData.oldPassword,
         newPassword: passwordData.newPassword,
       });
@@ -132,9 +145,11 @@ export default function ProfilePage() {
         confirmPassword: '',
       });
       alert('Password berhasil diubah!');
+
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Gagal mengubah password';
       console.error('Error changing password:', error);
-      alert('Gagal mengubah password. Pastikan password lama benar.');
+      alert(errorMessage);
     } finally {
       setChangingPassword(false);
     }
@@ -152,18 +167,24 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      
+
       {/* Header Card */}
-      <div className="bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
+      <div className="bg-linear-to-r from-teal-500 to-emerald-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
-        
+
         <div className="relative flex flex-col md:flex-row items-center gap-6">
           {/* Avatar */}
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center text-4xl font-bold">
               {user.photo_url ? (
-                <img src={user.photo_url} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                <Image
+                  src={user.photo_url}
+                  alt={user.name}
+                  width={96}
+                  height={96}
+                  className="w-full h-full rounded-full object-cover"
+                />
               ) : (
                 user.name.charAt(0).toUpperCase()
               )}
@@ -188,9 +209,9 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2">
                 <Shield size={16} />
                 <span className="text-sm font-medium px-3 py-1 bg-white/20 rounded-full">
-                  {user.role === 'pegawai' ? 'Pegawai' : 
-                   user.role === 'supervisor' ? 'Supervisor' : 
-                   user.role === 'sdm' ? 'SDM' : 'Admin'}
+                  {user.role === 'pegawai' ? 'Pegawai' :
+                    user.role === 'supervisor' ? 'Supervisor' :
+                      user.role === 'sdm' ? 'SDM' : 'Admin'}
                 </span>
               </div>
             </div>
@@ -257,14 +278,14 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column - Informasi Pribadi */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Informasi Pribadi */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-lg font-bold text-slate-800 mb-6">Informasi Pribadi</h3>
-            
+
             <div className="space-y-4">
               {/* Nama Lengkap */}
               <div className="flex items-start gap-4">
@@ -414,11 +435,11 @@ export default function ProfilePage() {
 
         {/* Right Column - Activity Log */}
         <div className="space-y-6">
-          
+
           {/* Informasi Jabatan */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-lg font-bold text-slate-800 mb-4">Informasi Jabatan</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
@@ -426,7 +447,7 @@ export default function ProfilePage() {
                 </label>
                 <p className="text-slate-800 font-medium">{user.position}</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
                   Unit Kerja
@@ -455,33 +476,71 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Activity Log */}
+          {/* Profile Summary */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Clock size={20} className="text-teal-600" />
-              <h3 className="text-lg font-bold text-slate-800">Aktivitas Terakhir</h3>
+              <BarChart3 size={20} className="text-teal-600" />
+              <h3 className="text-lg font-bold text-slate-800">Ringkasan Kinerja</h3>
             </div>
-            
-            <div className="space-y-4">
-              {activityLog.slice(0, 5).map((log) => (
-                <div key={log.id} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                    {log.action === 'Login' ? (
-                      <LogIn size={16} className="text-slate-600" />
-                    ) : (
-                      <FileText size={16} className="text-slate-600" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800">{log.action}</p>
-                    <p className="text-xs text-slate-500 line-clamp-1">{log.description}</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {formatDateTime(log.timestamp)}
-                    </p>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 size={32} className="animate-spin text-teal-500" />
+              </div>
+            ) : summary ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <span className="text-sm text-slate-600">Total Laporan</span>
+                  <span className="text-xl font-bold text-teal-600">
+                    {summary.totalLaporan}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <span className="text-sm text-slate-600">Sudah Dinilai</span>
+                  <span className="text-xl font-bold text-emerald-600">
+                    {summary.totalDinilai}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <span className="text-sm text-slate-600">Belum Dinilai</span>
+                  <span className="text-xl font-bold text-amber-600">
+                    {summary.belumDinilai}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-linear-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-200">
+                  <span className="text-sm font-medium text-teal-700">Rata-rata Rating</span>
+                  <div className="flex items-center gap-1">
+                    <Star size={18} className="text-amber-500 fill-amber-500" />
+                    <span className="text-xl font-bold text-teal-700">
+                      {summary.rataRating.toFixed(1)}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {summary.lastReport && (
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <p className="text-xs font-medium text-slate-600 mb-2">Laporan Terakhir:</p>
+                    <p className="text-sm font-medium text-slate-800 line-clamp-1">
+                      {summary.lastReport.judul}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {new Date(summary.lastReport.tanggal).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 text-center py-4">
+                Belum ada data laporan
+              </p>
+            )}
           </div>
 
         </div>
@@ -489,11 +548,11 @@ export default function ProfilePage() {
 
       {/* MODAL: Change Password */}
       {showPasswordModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-up">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-up">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            
+
             {/* Header */}
-            <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+            <div className="bg-linear-to-r from-teal-500 to-emerald-500 px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">Ubah Password</h3>
               <button
                 onClick={() => setShowPasswordModal(false)}
@@ -505,7 +564,7 @@ export default function ProfilePage() {
 
             {/* Form */}
             <form onSubmit={handleChangePassword} className="p-6 space-y-5">
-              
+
               {/* Password Lama */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -585,7 +644,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={changingPassword}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="flex-1 px-6 py-3 bg-linear-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {changingPassword ? (
                     <span className="flex items-center justify-center gap-2">

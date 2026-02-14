@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Laporan } from '@/types';
 import { api } from '@/lib/api';
 import ReviewModal from '@/components/ReviewModal';
-import { 
-  Search, 
-  FileText, 
-  Clock, 
+import {
+  Search,
+  FileText,
+  Clock,
   Star,
   Loader2,
   ClipboardCheck,
@@ -21,7 +21,7 @@ export default function PenilaianPage() {
   const [filteredLaporan, setFilteredLaporan] = useState<Laporan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
@@ -55,7 +55,11 @@ export default function PenilaianPage() {
 
   const loadLaporan = async () => {
     try {
-      const data = await api.getLaporanForReview();
+      const userData = localStorage.getItem('user');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const data = await api.getLaporanForReview(user.email);
       setLaporan(data);
       setFilteredLaporan(data);
     } catch (error) {
@@ -70,9 +74,9 @@ export default function PenilaianPage() {
 
     try {
       await api.submitReview({
-        id: `review_${Date.now()}`,
         laporan_id: selectedLaporan.id,
         reviewer_email: user.email,
+        reviewer_name: user.name,
         rating: data.rating,
         komentar: data.komentar,
         created_at: new Date().toISOString(),
@@ -80,10 +84,14 @@ export default function PenilaianPage() {
 
       // Reload data
       await loadLaporan();
+      setShowReviewModal(false);
+      setSelectedLaporan(null);
+
       alert('Penilaian berhasil dikirim!');
     } catch (error) {
       console.error('Error submitting review:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Gagal mengirim penilaian';
+      alert(errorMessage);
     }
   };
 
@@ -97,10 +105,10 @@ export default function PenilaianPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      
+
       {/* Header Actions */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        
+
         {/* Search */}
         <div className="relative flex-1 w-full lg:max-w-md">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -170,7 +178,7 @@ export default function PenilaianPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          
+
           {/* Desktop Table */}
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">

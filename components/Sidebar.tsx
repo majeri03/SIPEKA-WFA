@@ -1,199 +1,267 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { User } from '@/types';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  ClipboardCheck, 
-  BarChart3, 
-  UserCircle, 
+import {
+  LayoutDashboard,
+  FileText,
+  ClipboardCheck,
+  BarChart3,
+  User,
   LogOut,
-  Menu,
-  X
+  ChevronLeft,
+  Menu
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
-interface MenuItem {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  roles: string[];
+interface User {
+  name: string;
+  role: string;
+  position: string;
+  photo_url?: string;
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // ✅ FIX: State user dengan proper initialization
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ✅ Load user dari localStorage
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setTimeout(() => {
-        setUser(JSON.parse(userData));
-      }, 0);
-    }
+    const loadUser = () => {
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          console.log('✅ Sidebar loaded user:', parsedUser);
+          setUser(parsedUser);
+        } else {
+          console.log('⚠️ No user in localStorage');
+        }
+      } catch (error) {
+        console.error('❌ Error loading user:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUser();
   }, []);
+
+  const menuItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['sdm', 'supervisor', 'Pegawai'] },
+    { href: '/laporan', label: 'Laporan', icon: FileText, roles: ['sdm', 'supervisor', 'Pegawai'] },
+    { href: '/penilaian', label: 'Penilaian', icon: ClipboardCheck, roles: ['sdm', 'supervisor'] }, // ✅ Hanya SDM & Supervisor
+    { href: '/rekap', label: 'Rekap', icon: BarChart3, roles: ['sdm'] }, // ✅ Hanya SDM
+    { href: '/profile', label: 'Profil', icon: User, roles: ['sdm', 'supervisor', 'Pegawai'] },
+  ];
 
   const handleLogout = async () => {
     try {
-      await auth.signOut();
+      await signOut(auth);
       localStorage.removeItem('user');
+      sessionStorage.clear(); // ✅ Clear cache juga
+      console.log('✅ Logout berhasil');
       router.push('/login');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ Logout error:', error);
+      alert('Gagal logout. Silakan coba lagi.');
     }
   };
 
-  const menuItems: MenuItem[] = [
-    {
-      label: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      roles: ['pegawai', 'supervisor', 'sdm', 'admin'],
-    },
-    {
-      label: 'Laporan Saya',
-      href: '/laporan',
-      icon: FileText,
-      roles: ['pegawai', 'supervisor', 'sdm', 'admin'],
-    },
-    {
-      label: 'Penilaian',
-      href: '/penilaian',
-      icon: ClipboardCheck,
-      roles: ['supervisor', 'sdm', 'admin'],
-    },
-    {
-      label: 'Rekap Data',
-      href: '/rekap',
-      icon: BarChart3,
-      roles: ['sdm', 'admin'],
-    },
-    {
-      label: 'Profil',
-      href: '/profile',
-      icon: UserCircle,
-      roles: ['pegawai', 'supervisor', 'sdm', 'admin'],
-    },
-  ];
+  // ✅ Show loading state
+  if (isLoading) {
+    return (
+      <div className="w-64 bg-linear-to-b from-teal-600 to-emerald-600 text-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
 
-  // 🔥 FIX: Cek user dulu sebelum filter
-  const filteredMenu = user 
-    ? menuItems.filter(item => item.roles.includes(user.role))
-    : [];
-
+  // ✅ Show fallback jika user null
   if (!user) {
-    return null; // atau loading skeleton
+    return (
+      <div className="w-64 bg-linear-to-b from-teal-600 to-emerald-600 text-white flex items-center justify-center">
+        <p className="text-sm">Loading user...</p>
+      </div>
+    );
   }
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-teal-500 text-white rounded-lg shadow-lg"
-      >
-        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
-      {/* Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed lg:static inset-y-0 left-0 z-40
-          w-72 bg-white border-r border-slate-200
-          flex flex-col shadow-xl lg:shadow-none
-          transition-transform duration-300
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
+      {/* Desktop Sidebar */}
+      <div
+        className={`hidden lg:flex flex-col bg-linear-to-b from-teal-600 to-emerald-600 text-white transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'
+          }`}
       >
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 bg-linear-to-brrom-teal-50 to-white">
+        <div className="p-4 flex items-center justify-between border-b border-white/20">
+          {!isCollapsed && (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                <span className="text-teal-600 font-bold text-lg">S</span>
+              </div>
+              <div>
+                <h1 className="font-bold text-lg">SIPEKA</h1>
+                <p className="text-xs text-white/80">Sistem Pelaporan Kinerja</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <ChevronLeft
+              size={20}
+              className={`transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
+            />
+          </button>
+        </div>
+
+        {/* User Profile */}
+        <div className="p-4 border-b border-white/20">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-linear-to-br from-teal-500 to-emerald-500 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-              S
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+              {user.photo_url ? (
+                <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl font-bold">{user.name.charAt(0)}</span>
+              )}
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">SIPEKA</h1>
-              <p className="text-xs text-slate-500">Sistem Pelaporan Kinerja</p>
-            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold truncate">{user.name}</p>
+                <p className="text-xs text-white/80 truncate">{user.position}</p>
+                <span className="inline-block mt-1 px-2 py-0.5 bg-white/20 rounded text-xs">
+                  {user.role === 'sdm' ? 'Admin' : user.role === 'supervisor' ? 'Supervisor' : 'Pegawai'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* User Info */}
-        <div className="p-6 border-b border-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-linear-to-br from-teal-400 to-emerald-400 flex items-center justify-center text-white font-semibold shadow-md">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">
-                {user.name}
-              </p>
-              <p className="text-xs text-slate-500 truncate">{user.position}</p>
-              <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium text-teal-700 bg-teal-100 rounded-full">
-                {user.role === 'pegawai' ? 'Pegawai' : 
-                 user.role === 'supervisor' ? 'Supervisor' :
-                 user.role === 'sdm' ? 'SDM' : 'Admin'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <ul className="space-y-1">
-            {filteredMenu.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-
-              return (
-                <li key={item.href}>
-                  <a
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all duration-200 group
-                      ${isActive 
-                        ? 'bg-linear-to-r from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/30' 
-                        : 'text-slate-600 hover:bg-teal-50 hover:text-teal-700'
-                      }
-                    `}
-                  >
-                    <Icon 
-                      size={20} 
-                      className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-teal-500'}
-                    />
-                    <span className="font-medium">{item.label}</span>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
+        {/* Menu Items */}
+        <nav className="flex-1 p-4 space-y-2">
+          {menuItems.filter(item => item.roles.includes(user.role)).map((item) => {
+            const isActive = pathname === item.href;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                    ? 'bg-white text-teal-600 font-semibold'
+                    : 'hover:bg-white/10'
+                  } ${isCollapsed ? 'justify-center' : ''}`}
+              >
+                <Icon size={20} />
+                {!isCollapsed && <span>{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Logout Button */}
-        <div className="p-4 border-t border-slate-200">
+        <div className="p-4 border-t border-white/20">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 group"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors ${isCollapsed ? 'justify-center' : ''
+              }`}
           >
-            <LogOut size={20} className="text-red-400 group-hover:text-red-600" />
-            <span className="font-medium">Keluar</span>
+            <LogOut size={20} />
+            {!isCollapsed && <span>Keluar</span>}
           </button>
         </div>
-      </aside>
+      </div>
+
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(true)}
+        className="lg:hidden fixed bottom-4 right-4 bg-teal-600 text-white p-4 rounded-full shadow-lg z-40"
+      >
+        <Menu size={24} />
+      </button>
+
+      {/* Mobile Sidebar */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-linear-to-b from-teal-600 to-emerald-600 text-white flex flex-col">
+            {/* Same content as desktop sidebar */}
+            <div className="p-4 flex items-center justify-between border-b border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                  <span className="text-teal-600 font-bold text-lg">S</span>
+                </div>
+                <div>
+                  <h1 className="font-bold text-lg">SIPEKA</h1>
+                  <p className="text-xs text-white/80">Sistem Pelaporan Kinerja</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-b border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+                  {user.photo_url ? (
+                    <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-bold">{user.name.charAt(0)}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{user.name}</p>
+                  <p className="text-xs text-white/80 truncate">{user.position}</p>
+                  <span className="inline-block mt-1 px-2 py-0.5 bg-white/20 rounded text-xs">
+                    {user.role === 'sdm' ? 'Admin' : user.role === 'supervisor' ? 'Supervisor' : 'Pegawai'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <nav className="flex-1 p-4 space-y-2">
+              {menuItems.filter(item => item.roles.includes(user.role)).map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                        ? 'bg-white text-teal-600 font-semibold'
+                        : 'hover:bg-white/10'
+                      }`}
+                  >
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="p-4 border-t border-white/20">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <LogOut size={20} />
+                <span>Keluar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

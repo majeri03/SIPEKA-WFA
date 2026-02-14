@@ -79,7 +79,7 @@ export default function LaporanPage() {
     setSubmitting(true);
     try {
       await api.submitLaporan({
-        user_id: user.id,
+        employee_email: user.email,
         ...formData,
       });
       
@@ -111,104 +111,116 @@ export default function LaporanPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      
-      {/* ...existing code... Header Actions, Stats, Table */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <div className="relative flex-1 w-full lg:max-w-md">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari laporan..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-          />
-        </div>
+     <div className="space-y-6 animate-fade-up">
+    
+    {/* Header */}
+    <div className="flex items-center gap-3">
+      <div className="w-12 h-12 rounded-xl bg-linear-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/30">
+        <FileText size={24} className="text-white" />
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Laporan Kinerja</h1>
+        <p className="text-sm text-slate-500">Kelola dan submit laporan harian Anda</p>
+      </div>
+    </div>
 
-        <div className="flex items-center gap-3 w-full lg:w-auto">
-          <div className="relative flex-1 lg:flex-initial">
-            <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'semua' | 'belum_dinilai' | 'sudah_dinilai')}
-              className="w-full lg:w-auto pl-10 pr-8 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none cursor-pointer"
-            >
-              <option value="semua">Semua Status</option>
-              <option value="belum_dinilai">Menunggu Penilaian</option>
-              <option value="sudah_dinilai">Sudah Dinilai</option>
-            </select>
-          </div>
+    {/* Search & Filter Actions */}
+    <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+      <div className="relative flex-1 w-full lg:max-w-md">
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Cari laporan..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+        />
+      </div>
 
-          <button
-            onClick={() => setShowSubmitModal(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-linear-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium shadow-lg shadow-teal-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all whitespace-nowrap"
+      <div className="flex items-center gap-3 w-full lg:w-auto">
+        <div className="relative flex-1 lg:flex-initial">
+          <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as 'semua' | 'belum_dinilai' | 'sudah_dinilai')}
+            className="w-full lg:w-auto pl-10 pr-8 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none cursor-pointer"
           >
-            <Plus size={18} />
-            <span className="hidden sm:inline">Tambah Laporan</span>
-            <span className="sm:hidden">Tambah</span>
-          </button>
+            <option value="semua">Semua Status</option>
+            <option value="belum_dinilai">Menunggu Penilaian</option>
+            <option value="sudah_dinilai">Sudah Dinilai</option>
+          </select>
+        </div>
+
+        <button
+          onClick={() => setShowSubmitModal(true)}
+          className="flex items-center gap-2 px-5 py-3 bg-linear-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium shadow-lg shadow-teal-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all whitespace-nowrap"
+        >
+          <Plus size={18} />
+          <span className="hidden sm:inline">Tambah Laporan</span>
+          <span className="sm:hidden">Tambah</span>
+        </button>
+      </div>
+    </div>
+
+    {/* Stats Cards */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+            <FileText size={20} className="text-teal-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">{laporan.length}</p>
+            <p className="text-xs text-slate-500">Total</p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-              <FileText size={20} className="text-teal-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-800">{laporan.length}</p>
-              <p className="text-xs text-slate-500">Total</p>
-            </div>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+            <Star size={20} className="text-emerald-600" />
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-              <Star size={20} className="text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-800">
-                {laporan.filter(l => l.status === 'sudah_dinilai').length}
-              </p>
-              <p className="text-xs text-slate-500">Dinilai</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-              <FileText size={20} className="text-amber-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-800">
-                {laporan.filter(l => l.status === 'belum_dinilai').length}
-              </p>
-              <p className="text-xs text-slate-500">Menunggu</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-              <Star size={20} className="text-purple-600 fill-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-800">
-                {(laporan
-                  .filter(l => l.rating)
-                  .reduce((acc, l) => acc + (l.rating || 0), 0) / laporan.filter(l => l.rating).length || 0
-                ).toFixed(1)}
-              </p>
-              <p className="text-xs text-slate-500">Rata-rata</p>
-            </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">
+              {laporan.filter(l => l.status === 'sudah_dinilai').length}
+            </p>
+            <p className="text-xs text-slate-500">Dinilai</p>
           </div>
         </div>
       </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+            <FileText size={20} className="text-amber-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">
+              {laporan.filter(l => l.status === 'belum_dinilai').length}
+            </p>
+            <p className="text-xs text-slate-500">Menunggu</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+            <Star size={20} className="text-purple-600 fill-purple-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-800">
+              {(laporan
+                .filter(l => l.rating)
+                .reduce((acc, l) => acc + (l.rating || 0), 0) / laporan.filter(l => l.rating).length || 0
+              ).toFixed(1)}
+            </p>
+            <p className="text-xs text-slate-500">Rata-rata</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
       <LaporanTable 
         data={filteredLaporan} 

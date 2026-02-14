@@ -38,6 +38,10 @@ export default function RekapPage() {
         dinilai: number;
         rata: number;
     }>>([]);
+    const [unitData, setUnitData] = useState<Array<{
+        name: string;
+        value: number;
+    }>>([]);
     const [filterPeriode, setFilterPeriode] = useState('7hari');
 
     useEffect(() => {
@@ -49,15 +53,34 @@ export default function RekapPage() {
 
     const loadData = async () => {
         try {
+            const userData = localStorage.getItem('user');
+            if (!userData) return;
+
+            const user = JSON.parse(userData);
+
             const [statsData, pegawaiList, monthlyStats] = await Promise.all([
-                api.getRekapStats(),
-                api.getRekapByPegawai(),
-                api.getRekapByBulan(),
+                api.getRekapStats(user.email),
+                api.getRekapByPegawai(user.email),
+                api.getRekapByBulan(user.email),
             ]);
 
             setStats(statsData);
             setPegawaiData(pegawaiList);
             setMonthlyData(monthlyStats);
+
+            // ✅ Generate unit distribution dari pegawaiData
+            const unitMap = new Map<string, number>();
+            pegawaiList.forEach(p => {
+                unitMap.set(p.unit, (unitMap.get(p.unit) || 0) + 1);
+            });
+
+            const unitDistribution = Array.from(unitMap.entries()).map(([name, value]) => ({
+                name,
+                value
+            }));
+
+            setUnitData(unitDistribution);
+
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -69,14 +92,7 @@ export default function RekapPage() {
         alert('Fitur export akan segera tersedia!\nData akan di-export ke format Excel.');
     };
 
-    // Data untuk chart distribusi unit
-    const unitDistribution = [
-        { name: 'Bagian Umum', value: 8 },
-        { name: 'Bagian Kepegawaian', value: 6 },
-        { name: 'Bagian Keuangan', value: 7 },
-        { name: 'Bagian Humas', value: 5 },
-        { name: 'Bagian Perencanaan', value: 4 },
-    ];
+    
 
     if (loading) {
         return (
@@ -197,7 +213,7 @@ export default function RekapPage() {
                     <Award size={24} className="text-teal-600" />
                     <h3 className="text-lg font-bold text-slate-800">Distribusi Pegawai per Unit Kerja</h3>
                 </div>
-                <UnitDistributionChart data={unitDistribution} />
+                <UnitDistributionChart data={unitData} />
             </div>
 
             {/* Tabel Rekap per Pegawai */}
@@ -263,9 +279,9 @@ export default function RekapPage() {
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${pegawai.rata >= 4.5 ? 'bg-emerald-100 text-emerald-700' :
-                                                pegawai.rata >= 4.0 ? 'bg-blue-100 text-blue-700' :
-                                                    pegawai.rata >= 3.5 ? 'bg-amber-100 text-amber-700' :
-                                                        'bg-red-100 text-red-700'
+                                            pegawai.rata >= 4.0 ? 'bg-blue-100 text-blue-700' :
+                                                pegawai.rata >= 3.5 ? 'bg-amber-100 text-amber-700' :
+                                                    'bg-red-100 text-red-700'
                                             }`}>
                                             {pegawai.rata >= 4.5 ? 'Sangat Baik' :
                                                 pegawai.rata >= 4.0 ? 'Baik' :
@@ -307,8 +323,8 @@ export default function RekapPage() {
                                 <div>
                                     <p className="text-slate-500 text-xs">Predikat</p>
                                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${pegawai.rata >= 4.5 ? 'bg-emerald-100 text-emerald-700' :
-                                            pegawai.rata >= 4.0 ? 'bg-blue-100 text-blue-700' :
-                                                'bg-amber-100 text-amber-700'
+                                        pegawai.rata >= 4.0 ? 'bg-blue-100 text-blue-700' :
+                                            'bg-amber-100 text-amber-700'
                                         }`}>
                                         {pegawai.rata >= 4.5 ? 'Sangat Baik' :
                                             pegawai.rata >= 4.0 ? 'Baik' : 'Cukup'}
