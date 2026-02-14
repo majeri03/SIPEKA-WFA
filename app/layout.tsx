@@ -15,6 +15,7 @@ export default function RootLayout({
     <html lang="id">
       <body className="min-h-screen antialiased bg-slate-950">
         {children}
+        <div id="modal-root" className="relative z-9999"></div>
       </body>
     </html>
   );

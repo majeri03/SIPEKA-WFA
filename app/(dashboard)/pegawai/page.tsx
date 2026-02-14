@@ -14,7 +14,7 @@ export default function PegawaiPage() {
   // State Data Pegawai
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  
+    const [isSubmitting, setIsSubmitting] = useState(false);
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -69,26 +69,38 @@ export default function PegawaiPage() {
     e.preventDefault();
     if (!currentUser?.email) return;
 
+    // Mulai Loading
+    setIsSubmitting(true);
+
     const payload = modalMode === 'add' 
       ? formData 
-      : { targetEmail: formData.email, updates: formData }; // Sesuaikan struktur payload untuk backend
+      : { targetEmail: formData.email, updates: formData }; 
 
     try {
-      // Panggil method manageUser dari class API
-      const result = await api.manageUser(
+      // Update the type to include optional 'status'
+      type ManageUserResult = { success: boolean; message: string; status?: string };
+      const result: ManageUserResult = await api.manageUser(
         currentUser.email, 
         modalMode, 
         payload as Record<string, unknown>
       );
       
-      if (result.success) {
-        alert(modalMode === 'add' ? 'Pegawai ditambahkan!' : 'Data diperbarui!');
-        setIsModalOpen(false);
-        fetchUsers(); // Refresh tabel
+      if (result.success || result.status === 'success') {
+        
+        setIsModalOpen(false); 
+        setFormData({}); 
+        await fetchUsers(); 
+        
+        alert(modalMode === 'add' ? 'Pegawai berhasil ditambahkan!' : 'Data berhasil diperbarui!');
+      } else {
+        alert('Gagal: ' + result.message);
       }
     } catch (error) {
       console.error(error);
-      alert('Gagal menyimpan data: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert('Terjadi kesalahan saat menyimpan data.');
+    } finally {
+      // Matikan Loading (Wajib di finally agar selalu mati walau error)
+      setIsSubmitting(false);
     }
   };
 
@@ -278,27 +290,46 @@ export default function PegawaiPage() {
                     onChange={e => setFormData({...formData, role: e.target.value as User['role']})}
                   >
                     <option value="pegawai">Pegawai</option>
+                    <option value="supervisor">Supervisor (Atasan)</option>
                     <option value="sdm">SDM (Admin)</option>
                   </select>
                 </div>
                  <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Supervisor Email</label>
                   <input type="email" className="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition"
-                    placeholder="Opsional"
+                    placeholder="email.atasan@kantor.com"
                     value={formData.supervisor_email || ''}
                     onChange={e => setFormData({...formData, supervisor_email: e.target.value})}
                   />
+                  {/* Tambahkan keterangan kecil biar user paham */}
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    *Kosongkan jika ini akun Supervisor/SDM
+                  </p>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-medium transition text-sm">
+                  disabled={isSubmitting} // Disable saat loading
+                  className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-medium transition text-sm disabled:opacity-50">
                   Batal
                 </button>
+                
                 <button type="submit" 
-                  className="px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-lg shadow-teal-600/20 transition transform active:scale-95 text-sm">
-                  Simpan
+                  disabled={isSubmitting} // Disable saat loading
+                  className="px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-lg shadow-teal-600/20 transition transform active:scale-95 text-sm disabled:bg-slate-400 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2">
+                  {isSubmitting ? (
+                    <>
+                      {/* Spinner Sederhana */}
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    'Simpan'
+                  )}
                 </button>
               </div>
             </form>

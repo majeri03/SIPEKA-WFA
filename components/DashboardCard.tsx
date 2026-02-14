@@ -58,7 +58,7 @@ export default function DashboardCard({
   color 
 }: DashboardCardProps) {
   const colors = colorVariants[color];
-
+  
   return (
     <div className="relative overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl transition-all duration-300 group">
       

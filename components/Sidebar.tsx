@@ -185,7 +185,7 @@ export default function Sidebar() {
                 <p className="font-semibold truncate">{user.name}</p>
                 <p className="text-xs text-white/80 truncate">{user.position}</p>
                 <span className="inline-block mt-1 px-2 py-0.5 bg-white/20 rounded text-xs">
-                  {user.role === 'sdm' ? 'Admin' : user.role === 'supervisor' ? 'Supervisor' : 'Pegawai'}
+                  {user.role.toUpperCase() === 'SDM' ? 'Tim SDM' : user.role.toUpperCase() === 'SUPERVISOR' ? 'Supervisor' : 'Pegawai'}
                 </span>
               </div>
             )}
@@ -268,7 +268,7 @@ export default function Sidebar() {
                   <p className="font-semibold truncate">{user.name}</p>
                   <p className="text-xs text-white/80 truncate">{user.position}</p>
                   <span className="inline-block mt-1 px-2 py-0.5 bg-white/20 rounded text-xs">
-                    {user.role === 'sdm' ? 'Admin' : user.role === 'supervisor' ? 'Supervisor' : 'Pegawai'}
+                    {user.role.toUpperCase() === 'SDM' ? 'Tim SDM' : user.role.toUpperCase() === 'SUPERVISOR' ? 'Supervisor' : 'Pegawai'}
                   </span>
                 </div>
               </div>

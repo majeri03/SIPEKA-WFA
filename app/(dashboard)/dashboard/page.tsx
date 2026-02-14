@@ -97,9 +97,35 @@ export default function DashboardPage() {
       </div>
     );
   }
-
+  
   if (!user) return null;
 
+  const getCardLabels = () => {
+    if (user?.role === 'sdm') {
+      return {
+        card1: 'Total Laporan (Global)',
+        card2: 'Total Terverifikasi',
+        card3: 'Menunggu Review',
+        card4: 'Rata-rata Kinerja Kantor'
+      };
+    } else if (user?.role === 'supervisor') {
+      return {
+        card1: 'Laporan Masuk (Tim)',
+        card2: 'Sudah Saya Nilai',
+        card3: 'Perlu Dinilai',
+        card4: 'Rata-rata Rating Tim'
+      };
+    } else {
+      return {
+        card1: 'Laporan Saya',
+        card2: 'Sudah Dinilai',
+        card3: 'Menunggu Penilaian',
+        card4: 'Rating Rata-rata Saya'
+      };
+    }
+  };
+
+  const labels = getCardLabels();
   return (
     <div className="space-y-8 animate-fade-up pb-10">
 
@@ -121,25 +147,25 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <DashboardCard
-          title="Total Laporan"
+          title={labels.card1}
           value={stats.totalLaporan}
           icon={FileText}
           color="teal"
         />
         <DashboardCard
-          title="Sudah Dinilai"
+          title={labels.card2}
           value={stats.totalDinilai}
           icon={CheckCircle}
           color="emerald"
         />
         <DashboardCard
-          title="Menunggu"
+          title={labels.card3}
           value={stats.belumDinilai}
           icon={Clock}
           color="amber"
         />
         <DashboardCard
-          title="Rating Rata-rata"
+          title={labels.card4}
           value={Number(stats.rataRating).toFixed(1)}
           icon={Star}
           color="purple"
