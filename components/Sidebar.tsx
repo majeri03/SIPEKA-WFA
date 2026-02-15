@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-
+import Image from 'next/image';
 interface User {
   name: string;
   role: string;
@@ -157,8 +157,14 @@ export default function Sidebar() {
         <div className="p-4 flex items-center justify-between border-b border-white/20">
           {!isCollapsed && (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-teal-600 font-bold text-lg">S</span>
+              <div className="w-14 h-14 relative flex items-center justify-center">
+                <Image
+                  src="/logosipeka.png"
+                  alt="Logo SIPEKA"
+                  fill
+                  className="object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]"
+                  priority
+                />
               </div>
               <div>
                 <h1 className="font-bold text-lg">SIPEKA</h1>

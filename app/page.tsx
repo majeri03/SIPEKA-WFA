@@ -18,8 +18,8 @@ export default function Home() {
               <Image
                 src="/logosipeka.png"
                 alt="Logo SIPEKA"
-                width={50}
-                height={50}
+                width={100}
+                height={100}
                 className="w-12 h-12 object-contain"
               />
               <div>
@@ -212,7 +212,15 @@ export default function Home() {
                 className="w-8 h-8 object-contain"
               />
               <span className="text-slate-400 text-sm">
-                © 2026 SIPEKA. All rights reserved.
+                © 2026 SIPEKA. Developed by{" "}
+                <a
+                  href="https://jeri-artadigital.web.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white font-semibold hover:text-teal-400 transition-colors"
+                >
+                  JERI ARTA DIGITAL
+                </a>
               </span>
             </div>
             <div className="text-slate-500 text-sm">

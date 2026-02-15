@@ -17,9 +17,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <head>
-        <link rel="icon" href="/logosipeka.png" />
-      </head>
       <body className="min-h-screen antialiased bg-slate-950">
         {children}
         <div id="modal-root" className="relative z-9999"></div>
